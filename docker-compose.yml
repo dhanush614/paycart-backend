@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+
+  # -----------------------------
+  # PostgreSQL for Wallet Service
+  # -----------------------------
+  wallet-postgres:
+    image: postgres:15
+    container_name: wallet-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: walletdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - wallet_pgdata:/var/lib/postgresql/data
+    networks:
+      - paycart-net
+
+  # -----------------------------
+  # PostgreSQL for Order Service
+  # -----------------------------
+  order-postgres:
+    image: postgres:15
+    container_name: order-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orderdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - order_pgdata:/var/lib/postgresql/data
+    networks:
+      - paycart-net
+
+  # -----------------------------
+  # Redis (for idempotency/cache)
+  # -----------------------------
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - paycart-net
+
+  # -----------------------------
+  # Zookeeper (required for Kafka)
+  # -----------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    networks:
+      - paycart-net
+
+  # -----------------------------
+  # Kafka Broker
+  # -----------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - paycart-net
+
+
+networks:
+  paycart-net:
+
+volumes:
+  wallet_pgdata:
+  order_pgdata:
