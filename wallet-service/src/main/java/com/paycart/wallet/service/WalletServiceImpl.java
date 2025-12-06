@@ -1,5 +1,6 @@
 package com.paycart.wallet.service;
 
+import com.paycart.wallet.dto.PaymentRequest;
 import com.paycart.wallet.dto.TopUpRequest;
 import com.paycart.wallet.entity.Wallet;
 import com.paycart.wallet.entity.WalletTransaction;
@@ -65,6 +66,39 @@ public class WalletServiceImpl implements WalletService {
 
 		return savedWallet;
 	}
+	
+	@Override
+    @Transactional
+    public Wallet debit(Long walletId, PaymentRequest request) {
+        Wallet wallet = getWallet(walletId);
+
+        BigDecimal amount = request.getAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+
+        // Check balance
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient balance");
+        }
+
+        // Update balance
+        wallet.setBalance(wallet.getBalance().subtract(amount));
+        Wallet savedWallet = walletRepository.save(wallet);
+
+        // Record transaction
+        WalletTransaction tx = new WalletTransaction();
+        tx.setWallet(savedWallet);
+        tx.setType(TransactionType.DEBIT);
+        tx.setAmount(amount);
+        tx.setStatus(TransactionStatus.SUCCESS);
+        tx.setDescription(request.getDescription());
+        tx.setCorrelationId(request.getCorrelationId());
+
+        transactionRepository.save(tx);
+
+        return savedWallet;
+    }
 
 	@Override
 	public List<WalletTransaction> getTransactions(Long walletId) {
