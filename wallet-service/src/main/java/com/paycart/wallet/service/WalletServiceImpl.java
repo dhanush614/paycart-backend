@@ -2,6 +2,8 @@ package com.paycart.wallet.service;
 
 import com.paycart.wallet.dto.PaymentRequest;
 import com.paycart.wallet.dto.TopUpRequest;
+import com.paycart.wallet.dto.WalletResponse;
+import com.paycart.wallet.dto.WalletTransactionResponse;
 import com.paycart.wallet.entity.Wallet;
 import com.paycart.wallet.entity.WalletTransaction;
 import com.paycart.wallet.enums.TransactionStatus;
@@ -26,82 +28,92 @@ public class WalletServiceImpl implements WalletService {
 	}
 
 	@Override
-	public Wallet createWallet(Long userId) {
+	public WalletResponse createWallet(Long userId) {
 		Wallet wallet = new Wallet();
 		wallet.setUserId(userId);
 		wallet.setBalance(BigDecimal.ZERO);
-		return walletRepository.save(wallet);
+		Wallet saved = walletRepository.save(wallet);
+		return mapWallet(saved);
 	}
 
 	@Override
-	public Wallet getWallet(Long walletId) {
-		return walletRepository.findById(walletId)
+	public WalletResponse getWallet(Long walletId) {
+		Wallet wallet = walletRepository.findById(walletId)
 				.orElseThrow(() -> new RuntimeException("Wallet not found with id: " + walletId));
+		return mapWallet(wallet);
 	}
 
 	@Override
 	@Transactional
-	public Wallet topUp(Long walletId, TopUpRequest request) {
-		Wallet wallet = getWallet(walletId);
+	public WalletResponse topUp(Long walletId, TopUpRequest request) {
+		Wallet wallet = walletRepository.findById(walletId)
+				.orElseThrow(() -> new RuntimeException("Wallet not found with id: " + walletId));
 
 		BigDecimal amount = request.getAmount();
 		if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
 			throw new IllegalArgumentException("Amount must be positive");
 		}
 
-		// Update wallet balance
 		wallet.setBalance(wallet.getBalance().add(amount));
 		Wallet savedWallet = walletRepository.save(wallet);
 
-		// Create transaction record
 		WalletTransaction tx = new WalletTransaction();
 		tx.setWallet(savedWallet);
 		tx.setType(TransactionType.CREDIT);
 		tx.setAmount(amount);
 		tx.setStatus(TransactionStatus.SUCCESS);
 		tx.setDescription(request.getDescription());
-		tx.setCorrelationId(null); // later for idempotency
+		tx.setCorrelationId(null);
 
 		transactionRepository.save(tx);
 
-		return savedWallet;
+		return mapWallet(savedWallet);
 	}
-	
-	@Override
-    @Transactional
-    public Wallet debit(Long walletId, PaymentRequest request) {
-        Wallet wallet = getWallet(walletId);
-
-        BigDecimal amount = request.getAmount();
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be positive");
-        }
-
-        // Check balance
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
-        }
-
-        // Update balance
-        wallet.setBalance(wallet.getBalance().subtract(amount));
-        Wallet savedWallet = walletRepository.save(wallet);
-
-        // Record transaction
-        WalletTransaction tx = new WalletTransaction();
-        tx.setWallet(savedWallet);
-        tx.setType(TransactionType.DEBIT);
-        tx.setAmount(amount);
-        tx.setStatus(TransactionStatus.SUCCESS);
-        tx.setDescription(request.getDescription());
-        tx.setCorrelationId(request.getCorrelationId());
-
-        transactionRepository.save(tx);
-
-        return savedWallet;
-    }
 
 	@Override
-	public List<WalletTransaction> getTransactions(Long walletId) {
-		return transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId);
+	@Transactional
+	public WalletResponse debit(Long walletId, PaymentRequest request) {
+		Wallet wallet = walletRepository.findById(walletId)
+				.orElseThrow(() -> new RuntimeException("Wallet not found with id: " + walletId));
+
+		BigDecimal amount = request.getAmount();
+		if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+			throw new IllegalArgumentException("Amount must be positive");
+		}
+
+		if (wallet.getBalance().compareTo(amount) < 0) {
+			throw new IllegalArgumentException("Insufficient balance");
+		}
+
+		wallet.setBalance(wallet.getBalance().subtract(amount));
+		Wallet savedWallet = walletRepository.save(wallet);
+
+		WalletTransaction tx = new WalletTransaction();
+		tx.setWallet(savedWallet);
+		tx.setType(TransactionType.DEBIT);
+		tx.setAmount(amount);
+		tx.setStatus(TransactionStatus.SUCCESS);
+		tx.setDescription(request.getDescription());
+		tx.setCorrelationId(request.getCorrelationId());
+
+		transactionRepository.save(tx);
+
+		return mapWallet(savedWallet);
+	}
+
+	@Override
+	public List<WalletTransactionResponse> getTransactions(Long walletId) {
+		return transactionRepository.findByWalletIdOrderByCreatedAtDesc(walletId).stream().map(this::mapTransaction)
+				.toList();
+	}
+
+	private WalletResponse mapWallet(com.paycart.wallet.entity.Wallet wallet) {
+		return new WalletResponse(wallet.getId(), wallet.getUserId(), wallet.getBalance(), wallet.getStatus(),
+				wallet.getCreatedAt(), wallet.getUpdatedAt());
+	}
+
+	private WalletTransactionResponse mapTransaction(com.paycart.wallet.entity.WalletTransaction tx) {
+		return new WalletTransactionResponse(tx.getId(), tx.getType(), tx.getAmount(), tx.getStatus(),
+				tx.getDescription(), tx.getCorrelationId(), tx.getCreatedAt());
 	}
 }
