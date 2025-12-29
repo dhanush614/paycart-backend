@@ -12,7 +12,8 @@ public class CreateOrderRequest {
     @Min(value = 1, message = "userId must be positive")
     private Long userId;
 
-    // For later when we integrate wallet
+    @NotNull(message = "walletId is required")
+    @Min(value = 1, message = "walletId must be positive")
     private Long walletId;
 
     @NotEmpty(message = "items cannot be empty")

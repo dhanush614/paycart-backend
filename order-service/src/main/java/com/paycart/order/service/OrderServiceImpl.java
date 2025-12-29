@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.paycart.order.client.WalletClient;
 import com.paycart.order.dto.CreateOrderRequest;
 import com.paycart.order.dto.OrderItemRequest;
 import com.paycart.order.dto.OrderItemResponse;
@@ -25,11 +26,14 @@ public class OrderServiceImpl implements OrderService {
 	private final InventoryRepository inventoryRepository;
 	private final OrderRepository orderRepository;
 
+	private final WalletClient walletClient;
+
 	public OrderServiceImpl(ProductRepository productRepository, InventoryRepository inventoryRepository,
-			OrderRepository orderRepository) {
+			OrderRepository orderRepository, WalletClient walletClient) {
 		this.productRepository = productRepository;
 		this.inventoryRepository = inventoryRepository;
 		this.orderRepository = orderRepository;
+		this.walletClient = walletClient;
 	}
 
 	@Override
@@ -87,7 +91,14 @@ public class OrderServiceImpl implements OrderService {
 		order.setTotalAmount(total);
 		order.setStatus(OrderStatus.CREATED);
 
-		return orderRepository.save(order);
+		Order savedOrder = orderRepository.save(order);
+
+		String correlationId = "ORDER-" + savedOrder.getId();
+		walletClient.debit(request.getWalletId(), savedOrder.getTotalAmount(), correlationId,
+				"Payment for order " + savedOrder.getId());
+
+		savedOrder.setStatus(OrderStatus.PAID);
+		return orderRepository.save(savedOrder);
 	}
 
 	private OrderResponse mapToResponse(Order order) {
