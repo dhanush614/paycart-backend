@@ -81,6 +81,15 @@ public class WalletServiceImpl implements WalletService {
 			throw new IllegalArgumentException("Amount must be positive");
 		}
 
+		String correlationId = request.getCorrelationId();
+
+		if (correlationId != null && !correlationId.isBlank()) {
+			var existing = transactionRepository.findByCorrelationId(correlationId);
+			if (existing.isPresent()) {
+				return mapWallet(wallet);
+			}
+		}
+
 		if (wallet.getBalance().compareTo(amount) < 0) {
 			throw new IllegalArgumentException("Insufficient balance");
 		}
@@ -94,7 +103,7 @@ public class WalletServiceImpl implements WalletService {
 		tx.setAmount(amount);
 		tx.setStatus(TransactionStatus.SUCCESS);
 		tx.setDescription(request.getDescription());
-		tx.setCorrelationId(request.getCorrelationId());
+		tx.setCorrelationId(correlationId);
 
 		transactionRepository.save(tx);
 

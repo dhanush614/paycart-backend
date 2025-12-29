@@ -36,8 +36,7 @@ public class WalletTransaction {
 	@Column(length = 255)
 	private String description;
 
-	// for idempotency later; for now can be null
-	@Column(length = 100)
+	@Column(length = 100, unique = true)
 	private String correlationId;
 
 	@Column(nullable = false)
