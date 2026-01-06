@@ -1,6 +1,8 @@
 package com.paycart.wallet.entity;
 
 import com.paycart.wallet.enums.TransactionStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import com.paycart.wallet.enums.TransactionType;
 import jakarta.persistence.*;
 
@@ -15,6 +17,7 @@ public class WalletTransaction {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@JsonIgnore
 	@ManyToOne(optional = false, fetch = FetchType.LAZY)
 	@JoinColumn(name = "wallet_id")
 	private Wallet wallet;
@@ -33,8 +36,7 @@ public class WalletTransaction {
 	@Column(length = 255)
 	private String description;
 
-	// for idempotency later; for now can be null
-	@Column(length = 100)
+	@Column(length = 100, unique = true)
 	private String correlationId;
 
 	@Column(nullable = false)

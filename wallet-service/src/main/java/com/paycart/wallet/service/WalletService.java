@@ -1,21 +1,21 @@
 package com.paycart.wallet.service;
 
+import java.util.List;
+
 import com.paycart.wallet.dto.PaymentRequest;
 import com.paycart.wallet.dto.TopUpRequest;
-import com.paycart.wallet.entity.Wallet;
-import com.paycart.wallet.entity.WalletTransaction;
-
-import java.util.List;
+import com.paycart.wallet.dto.WalletResponse;
+import com.paycart.wallet.dto.WalletTransactionResponse;
 
 public interface WalletService {
 
-	Wallet createWallet(Long userId);
+	WalletResponse createWallet(Long userId);
 
-	Wallet getWallet(Long walletId);
+	WalletResponse getWallet(Long walletId);
 
-	Wallet topUp(Long walletId, TopUpRequest request);
+	WalletResponse topUp(Long walletId, TopUpRequest request);
 
-	List<WalletTransaction> getTransactions(Long walletId);
-	
-	Wallet debit(Long walletId, PaymentRequest request);
+	List<WalletTransactionResponse> getTransactions(Long walletId);
+
+	WalletResponse debit(Long walletId, PaymentRequest request);
 }
