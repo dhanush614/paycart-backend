@@ -1,13 +1,18 @@
 # PayCart Backend (Mini OMS + Wallet System)
 
-PayCart is a simplified, production-ready backend system using a clean microservices architecture.  
-It includes:
+**Enterprise-style Order Management & Wallet System (Microservices)**
 
-- **Wallet Service** – UPI-style mini payment system  
-- **Order Service** – Product catalog, inventory & order processing  
-- **Gateway/Auth Service** – Entry point for all clients  
+PayCart is a production-oriented backend system inspired by real-world e-commerce and payment platforms.
+It demonstrates clean architecture, transactional safety, idempotent payments, event-driven communication, and API documentation using Java & Spring Boot.
 
-The project is built showcasing enterprise concepts like microservices, distributed data, idempotent payments, Kafka event processing, and Docker-based local infrastructure.
+**Microservices:**
+
+- **Wallet Service** – Manages user wallets, balance, transactions, and idempotent payments
+- **Order Service** – Manages products, inventory, orders, and payment orchestration
+- **Kafka** – Event-driven communication for payment completion
+- **PostgreSQL** – Separate database per service
+- **Redis** – Reserved for caching / future enhancements
+- **Docker Compose** – Local infrastructure setup
 
 ## Project Roadmap
 
@@ -47,3 +52,15 @@ Health endpoints:
 Gateway:        http://localhost:8080/health
 Wallet Service: http://localhost:8081/health
 Order Service:  http://localhost:8082/health
+
+# Sample Flow (End-to-End)
+1. Create a wallet
+2. Top up wallet
+3. Create order
+4. Order service:
+  - checks inventory
+  - debits wallet
+  - marks order as PAID
+5. Wallet publishes PAYMENT_COMPLETED
+6. Order service consumes event
+
